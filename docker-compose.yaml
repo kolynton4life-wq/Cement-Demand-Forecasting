@@ -1,0 +1,66 @@
+# Orchestrates the three containers: model training, prediction API, dashboard.
+#
+# NOTE: not verified with `docker build`/`docker compose up` in the
+# environment this project was developed in (no Docker daemon available
+# there) — verify locally before relying on this. The Python logic each
+# container runs (pipeline.py, api.py, dashboard/app.py) IS verified —
+# see test/ and the notebooks for that evidence. This file follows
+# standard Compose patterns but treat it as unverified until you've run
+# it once yourself.
+#
+# Usage:
+#   docker compose run model                       # train + persist models (run first)
+#   docker compose up api dashboard streamlit       # serve predictions + both dashboards
+
+services:
+  model:
+    build:
+      context: .
+      dockerfile: Dockerfile.model
+    volumes:
+      - ./models:/app/models
+      - ./data/processed:/app/data/processed
+      - ./data/raw:/app/data/raw:ro
+    env_file:
+      - .env
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./models:/app/models:ro
+      - ./data/processed:/app/data/processed
+      - ./data/raw:/app/data/raw:ro
+    depends_on:
+      - model
+    env_file:
+      - .env
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    ports:
+      - "8050:8050"
+    volumes:
+      - ./data/processed:/app/data/processed:ro
+    depends_on:
+      - model
+    env_file:
+      - .env
+
+  streamlit:
+    build:
+      context: .
+      dockerfile: Dockerfile.streamlit
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./data/processed:/app/data/processed:ro
+    depends_on:
+      - model
+    env_file:
+      - .env

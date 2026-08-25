@@ -1,0 +1,19 @@
+# Model training container — runs the production pipeline (src/pipeline.py):
+# ingest -> preprocess -> rolling-window validate -> train -> persist to models/
+FROM python:3.12-slim
+
+WORKDIR /app
+
+COPY requirements-model.txt .
+RUN pip install --no-cache-dir -r requirements-model.txt
+
+COPY src/ ./src/
+COPY data/raw/ ./data/raw/
+
+# models/ and data/processed/ are populated at runtime by the pipeline;
+# expected to be mounted as volumes in docker-compose.yaml so trained
+# artifacts persist outside the container and are visible to the api
+# and dashboard containers.
+RUN mkdir -p models data/processed
+
+CMD ["python", "src/pipeline.py"]

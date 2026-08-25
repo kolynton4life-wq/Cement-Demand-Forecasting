@@ -1,0 +1,17 @@
+# Dashboard container — serves the Plotly Dash app (src/dashboard/app.py).
+# Named Dockerfile.dashboard rather than Dockerfile.streamlit: this project
+# uses Plotly Dash (per the project spec), not Streamlit. Renamed
+# deliberately rather than mislabeling the framework to match a reference
+# folder structure from a different project.
+FROM python:3.12-slim
+
+WORKDIR /app
+
+COPY requirements-api.txt .
+RUN pip install --no-cache-dir -r requirements-api.txt dash>=2.16 plotly>=5.18
+
+COPY src/dashboard/ ./src/dashboard/
+
+EXPOSE 8050
+
+CMD ["python", "src/dashboard/app.py"]
