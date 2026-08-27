@@ -5,7 +5,7 @@ Midlands Infrastructure Group (MIG), covering 30 active UK construction sites.
 Predicts demand up to 8 weeks ahead, drives dynamic reorder points, and
 surfaces everything through a live dashboard.
 
-**Start here before opening any folder** — this README walks through what
+**Start here** this README walks through what
 was built, what was found, and what still needs real data before production
 use. Full detail lives in [`docs/project_documentation.md`](docs/project_documentation.md).
 
@@ -16,7 +16,7 @@ use. Full detail lives in [`docs/project_documentation.md`](docs/project_documen
 | Target (per project brief) | Result | Status |
 |---|---|---|
 | Forecast MAPE ≤ 15% | **3.3%** (holdout), 4.6% (rolling validation) | ✅ |
-| ≥98% pour readiness | 96.5% average, 10/30 sites individually ≥98% | ⚠️ Below target — see [§7](#step-7--validation--deployment) |
+| ≥98% pour readiness | 96.5% average, 10/30 sites individually ≥98% | ⚠️ Below target see [§7](#step-7--validation--deployment) |
 | 20% silo utilization improvement | +39.6 percentage points in healthy-band time | ✅ |
 | 30% write-off reduction | 0 overflow tonnes (structural guarantee) | ✅ |
 
@@ -57,10 +57,7 @@ cement-forecasting/
 
 ## Quickstart
 
-```powershell
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+```
 
 # 1. Copy MIG_Cement_Records.db into data/raw/, then run notebooks in order:
 #    01_data_ingestion -> 02_eda -> 03_feature_engineering
@@ -82,18 +79,18 @@ pytest test/ -v
 
 ---
 
-## Step 1 — Data Ingestion & Cleaning
+## Step 1 Data Ingestion & Cleaning
 
 **Task**: import from SQLite, validate schema, handle missing values, fix
 negative/invalid entries, ensure the inventory balance equation holds.
 
 **What was found**: the real database is normalized (`Sites`, `CementTypes`,
 `Operations` — 32,880 rows, 30 sites, 3 years daily, 2022-2024) rather than
-the single flat table the spec described — functionally equivalent, joined
+the single flat table the spec described  functionally equivalent, joined
 in `extract.py`. Zero nulls, zero true negatives, balance equation held to
 floating-point rounding. One real data-quality issue: **34.8% of rows**
 (concentrated in `conservative`-behavior sites) showed closing inventory up
-to ~38x silo capacity — a synthetic-data generation artifact, capped at
+to ~38x silo capacity a synthetic-data generation artifact, capped at
 capacity with the excess tracked separately rather than silently discarded.
 
 **Preparation for later steps**: `src/preprocessing.py` was later built as a
@@ -103,63 +100,64 @@ was built on top of it.
 
 ---
 
-## Step 2 — Exploratory Data Analysis
+## Step 2  Exploratory Data Analysis
 
 **Task**: demand patterns by site/type/time, seasonality, weather
 correlation, planned-vs-actual impact, outlier detection.
 
-**Key finding — behavior segmentation dominates everything else.** Sites
+**Key finding behavior segmentation dominates everything else.** Sites
 split into `aggressive` (JIT ordering), `chaotic` (erratic), and
-`conservative` (overstocking) — and this pattern shaped every later
+`conservative` (overstocking) and this pattern shaped every later
 modeling decision.
 
-![Behavior segmentation](assets/01_behavior_segmentation.png)
+
+![Behavior segmentation](docs/assets/01_behavior_segmentation.png)
 
 Network-wide demand over the full 3-year history, used to check for
 seasonality (found: stationary series, no strong annual cycle) and to
 choose the forecast granularity:
 
-![Weekly demand trend](assets/02_weekly_demand_trend.png)
+![Weekly demand trend](docs/assets/02_weekly_demand_trend.png)
 
 **Weather — the linear correlation is misleading.** Raw correlation between
 rainfall and consumption is only -0.18, which looks negligible:
 
-![Weather correlation matrix](assets/03_weather_correlation.png)
+![Weather correlation matrix](docs/assets/03_weather_correlation.png)
 
 But banding rainfall into none/light/moderate/heavy revealed a sharp
-**threshold effect** hidden by that single correlation number: heavy rain
+**threshold effect** hidden by that single correlation number heavy rain
 (≥15mm) crashes consumption to ~4 t/day (vs. ~24-25 normally) while planned
 pours stay unchanged, pushing stockout risk to 64%. This directly drove a
 `heavy_rain_flag` feature in Step 3 instead of using `rain_mm` as a linear
-input — the correlation number alone would have led to dropping a real
+input the correlation number alone would have led to dropping a real
 signal.
 
 **Planned-pour reliability tracks behavior exactly**, visible directly in
 the data:
 
-![Planned vs actual by behavior](assets/04_planned_vs_actual.png)
+![Planned vs actual by behavior](docs/assets/04_planned_vs_actual.png)
 
 `conservative` sites (blue) hug the perfect-adherence line; `aggressive`
-(orange) and `chaotic` (green) scatter far below it — meaning
+(orange) and `chaotic` (green) scatter far below it meaning
 `planned_pour_tonnes` could not be trusted uniformly as a model input.
 
 ---
 
-## Step 3 — Feature Engineering
+## Step 3 Feature Engineering
 
 **Task**: lag features, rolling aggregates, weather-adjusted pour
 indicators, inventory turnover metrics, interaction variables.
 
 **Two real bugs caught and fixed, not left in:**
 
-1. **Grain-fragmentation bug** — lag/rolling features were initially
+1. **Grain-fragmentation bug**  lag/rolling features were initially
    grouped by `(site_id, cement_type)`. Each site actually logs exactly
    one row per calendar day, with `cement_type` rotating as a same-day
-   attribute — grouping by both fragmented each site's continuous daily
+   attribute grouping by both fragmented each site's continuous daily
    series into three irregularly-spaced sub-series. Fixed to group by
    `site_id` alone; verified `consumed_lag_1d` matches literal yesterday's
    value for every one of 1,095 checked rows.
-2. **Non-informative interaction** — an early `behavior_x_planned_pour`
+2. **Non-informative interaction** an early `behavior_x_planned_pour`
    feature multiplied every behavior by the same constant (1.0), making it
    mathematically identical to `planned_pour_tonnes` and useless as an
    interaction. Fixed to genuine `continuous x dummy` interactions.
@@ -170,14 +168,14 @@ is explicitly excluded from the model's input feature list.
 
 ---
 
-## Step 4 — Model Development
+## Step 4  Model Development
 
 **Task**: SARIMAX baseline with external regressors vs. Random Forest with
 exogenous variables, evaluated by MAPE/RMSE, best model selected.
 
 **Finding: Random Forest wins on all 30/30 sites.**
 
-![Model comparison](assets/05_model_comparison_mape.png)
+![Model comparison](docs/assets/05_model_comparison_mape.png)
 
 | Model | Mean MAPE | Sites passing ≤15% |
 |---|---|---|
@@ -185,12 +183,12 @@ exogenous variables, evaluated by MAPE/RMSE, best model selected.
 | SARIMAX + exogenous | 24.9% | 14/30 |
 | **Random Forest** | **3.3%** | **30/30** |
 
-SARIMAX specifically struggled on `aggressive`-behavior sites (40.5% MAPE —
+SARIMAX specifically struggled on `aggressive`-behavior sites (40.5% MAPE 
 *worse* than naive there), consistent with Step 2's finding that those
-sites are the most erratic and threshold-driven — exactly what a linear
+sites are the most erratic and threshold-driven exactly what a linear
 model can't represent but a tree-based model handles naturally:
 
-![Forecast example](assets/06_forecast_example.png)
+![Forecast example](docs/assets/06_forecast_example.png)
 
 Random Forest (green) tracks the actual series (black) closely, including
 the sharp drops to zero; SARIMAX (orange) lags and occasionally forecasts
@@ -198,7 +196,7 @@ impossible negative consumption.
 
 ---
 
-## Step 5 — Inventory Simulation
+## Step 5 Inventory Simulation
 
 **Task**: forecast silo levels, define dynamic reorder points per site
 based on forecast demand, lead time, and silo capacity.
@@ -206,68 +204,37 @@ based on forecast demand, lead time, and silo capacity.
 **Result**: a continuous-review (s, S) policy per site produces the
 expected sawtooth inventory pattern:
 
-![Inventory simulation](assets/07_inventory_simulation.png)
+![Inventory simulation](docs/assets/07_inventory_simulation.png)
 
 **Two metrics were corrected before being reported**, not taken at face
 value:
 - **Silo utilization**: a naive %-change calculation produced nonsense
   (+918% for some sites) against a bimodal historical baseline. Replaced
-  with "% of days in a healthy 30-80% band": 8.1% → 47.7%, a real result.
+  with "% of days in a healthy 30-80% band" 8.1% → 47.7%, a real result.
 - **Write-off reduction**: the simulated 0-tonnes overflow is a
   **structural guarantee** of capping the order-up-to level at silo
-  capacity, not an empirically discovered 100% improvement — reported to
+  capacity, not an empirically discovered 100% improvement reported to
   stakeholders as a design property, not a statistic.
 
 ---
 
-## Step 6 — Dashboard Application
+## Step 6 Dashboard Application
 
 **Task**: Plotly Dash app with forecasts, inventory projections, reorder
 alerts, site drill-down and aggregate views.
 
-**Redesigned as a 7-section "control tower"** after review — sidebar
-navigation across Executive Overview, Demand Forecast, Inventory Control,
-Risk Monitor, Reorder Recommendations, Site Drilldown, and a Scenario
-Simulator, replacing the earlier flat two-tab layout. Own design system,
-not copied from any reference: dark graphite background, two accents
-(safety-amber `#F2A93B`, steel-blue `#4FA8E0`) plus a 4-color semantic risk
-system (stockout/low-stock/overcapacity/normal) used consistently across
-KPI cards, nav, and tables — design tokens live in `src/dashboard/theme.py`,
-shared by both apps so neither drifts out of sync.
+Built and **tested live** (server start, real HTTP requests, and an actual
+interactive callback test not just page load): `src/dashboard/app.py`.
 
-**Scenario Simulator** is a real what-if engine, not decorative — sliders
-for demand/delivery/lead-time adjustments (plus 4 preset stress tests) feed
-`src/dashboard/scenario_engine.py`, which re-runs the *same* (s, S)
-reorder-point formula used in Step 5, live. Verified with causal sanity
-tests before trusting it: a demand surge never produces less risk than
-baseline, a supply disruption never produces fewer stockouts, "Reset to
-Baseline" matches the unperturbed run exactly.
+A Streamlit version (`streamlit_app.py`) was added alongside it for this
+project's deployment target, kept in feature parity deliberately, and
+verified with Streamlit's `AppTest` framework including a real interactive
+site-switch test.
 
-Both apps tested for real, not assumed correct:
-- **Dash** (`app.py`): live server + HTTP requests + tested callbacks for
-  navigation, site switching, and — the highest-risk piece — a full preset
-  button -> sliders -> live recompute chain, verified via direct calls to
-  Dash's callback endpoint.
-- **Streamlit** (`streamlit_app.py`): every one of the 7 pages tested with
-  `AppTest` (not just page load), plus the same preset/slider/site-switch
-  interactions.
-
-**Two real bugs caught while building this**, both fixed before shipping:
-1. A redundant merge created `ROP_x`/`ROP_y` column suffixes instead of a
-   clean `ROP` column — `reorder_alerts.parquet` already carried `ROP` from
-   notebook 05's own merge; re-merging it crashed the app on startup.
-2. `Dockerfile.streamlit` never copied `.streamlit/config.toml` — Streamlit
-   resolves theme config relative to the *working directory a command is
-   run from*, not the script's own folder, so the dark theme silently
-   wouldn't have applied inside the container. Fixed by copying the config
-   alongside the app code.
-
-*(Live screenshots aren't included here — run either app locally with the
-quickstart commands above, from the project root, to see it rendered.)*
 
 ---
 
-## Step 7 — Validation & Deployment
+## Step 7 Validation & Deployment
 
 **Task**: validate against holdout data, deploy the pipeline to a
 production environment, establish a monitoring framework with a
@@ -275,15 +242,15 @@ retraining trigger.
 
 - **Rolling-window validation**: Step 4 used one fixed holdout window.
   `src/pipeline.py` re-validates every site across 3 independent
-  walk-forward windows — 4.6% mean MAPE, worst site 8.75%, confirming
+  walk-forward windows 4.6% mean MAPE, worst site 8.75%, confirming
   Step 4's result wasn't specific to one lucky period.
 - **Production pipeline**: `pipeline.py` (train + persist) →
-  `inference.py` (load and predict **without** retraining — verified ~2s
+  `inference.py` (load and predict **without** retraining verified ~2s
   vs. ~5s/site to retrain) → `monitoring.py` (live MAPE tracking against
   the 15% target, with a tested retrain-trigger) → `api.py` (FastAPI,
   every endpoint tested including error paths).
 - **Test suite**: 25 pytest tests. **The suite caught a real bug** during
-  development — `consumed_tonnes` could exceed physically available
+  development `consumed_tonnes` could exceed physically available
   supply on adversarial synthetic data, producing negative closing
   inventory. Fixed at the source (cap consumption at what was actually
   available) rather than patching the symptom, then back-ported the same
@@ -294,11 +261,11 @@ retraining trigger.
   Verify locally before relying on them.
 
 **Pour readiness gap, stated honestly**: simulated readiness is 96.5%, not
-the 98% target. Two causes identified: a cold-start effect (sites whose
+the 98% target. Two causes identified a cold-start effect (sites whose
 real ending inventory was already below the reorder point show stockouts
 before the first order arrives), and safety stock built from backtest RMSE
 that's likely optimistic once real future weather/schedule data replaces
-the proxy used here. `monitoring.py` is the mechanism to close this gap —
+the proxy used here. `monitoring.py` is the mechanism to close this gap 
 recalibrate safety stock from live forecast-error data once deployed.
 
 ---
@@ -308,21 +275,28 @@ recalibrate safety stock from live forecast-error data once deployed.
 Two of four target outcomes are cleanly met with margin (MAPE, write-offs).
 The utilization target required rejecting a misleading naive metric before
 it could be reported honestly, and is met under the corrected measure. Pour
-readiness is the one target genuinely not met yet — reported as such rather
+readiness is the one target genuinely not met yet reported as such rather
 than rounded up, with a specific, actionable path to closing it once real
 supplier lead-time data and live forecast-error monitoring are in place.
 
 **Before production use, three things need real data, not the assumptions
-used throughout this build:**
-1. Supplier lead times (currently a stated 3-day placeholder — not in the
+used throughout this build**
+1. Supplier lead times (currently a stated 3-day placeholder  not in the
    source data at all)
 2. A real weather forecast feed and MIG's actual pour schedule (currently
    a same-period-prior-year proxy for future dates)
 3. Docker build verification (untested in this development environment)
 
-Everything else — the forecasting model, the feature engineering, the
-inventory logic, both dashboards, and the production pipeline — was built,
+Everything else the forecasting model, the feature engineering, the
+inventory logic, both dashboards, and the production pipeline was built,
 tested by actually running it, and in three separate cases had a real bug
 caught and fixed before being called done. Full detail, including every
 number and every assumption, is in
 [`docs/project_documentation.md`](docs/project_documentation.md).
+
+<<<<<<< HEAD
+## Author
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?style=flat&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/elias-data-scientist)
+
+=======
+

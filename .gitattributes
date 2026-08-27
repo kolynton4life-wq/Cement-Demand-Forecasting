@@ -1,0 +1,11 @@
+
+data/processed/*
+!data/processed/.gitkeep
+
+
+!data/processed/operations_clean.parquet
+!data/processed/model_results_by_site.parquet
+!data/processed/model_forecasts_holdout.parquet
+!data/processed/inventory_simulation.parquet
+!data/processed/inventory_summary_by_site.parquet
+!data/processed/reorder_alerts.parquet
