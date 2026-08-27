@@ -10,6 +10,7 @@ COPY requirements-api.txt .
 RUN pip install --no-cache-dir -r requirements-api.txt streamlit>=1.30 plotly>=5.18
 
 COPY src/dashboard/ ./src/dashboard/
+COPY .streamlit/ ./.streamlit/
 
 EXPOSE 8501
 

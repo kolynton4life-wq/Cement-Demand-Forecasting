@@ -1,0 +1,79 @@
+html, body { background: #14161A; margin: 0; }
+
+* { box-sizing: border-box; }
+
+.sidebar {
+    width: 232px; min-height: 100vh; background: #1B1E24;
+    border-right: 1px solid #2A2F38; padding: 24px 16px; position: fixed;
+    display: flex; flex-direction: column; justify-content: space-between;
+}
+.brand { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; }
+.brand-mark {
+    width: 34px; height: 34px; border-radius: 8px; background: #F2A93B;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Space Grotesk', sans-serif; font-weight: 700; color: #14161A; font-size: 16px;
+}
+.brand-name { font-family: 'Space Grotesk', sans-serif; font-weight: 600; color: #EDEFF2; font-size: 15px; line-height: 1.1; }
+.brand-sub { font-family: 'Inter', sans-serif; color: #8B93A1; font-size: 11px; }
+
+.nav-eyebrow { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.08em;
+    color: #8B93A1; text-transform: uppercase; margin: 4px 0 10px 8px; }
+
+.nav-item {
+    font-family: 'Inter', sans-serif; font-size: 13.5px; color: #C4C9D2;
+    padding: 10px 12px; border-radius: 8px; margin-bottom: 4px; cursor: pointer;
+    border-left: 3px solid transparent; transition: background 0.15s;
+}
+.nav-item:hover { background: #22262E; }
+.nav-item.active { background: #22262E; border-left: 3px solid #F2A93B; color: #EDEFF2; font-weight: 500; }
+
+.status-pill { display: flex; align-items: center; gap: 8px; font-family: 'Inter', sans-serif;
+    font-size: 12px; color: #8B93A1; padding: 10px 12px; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: #34D399;
+    box-shadow: 0 0 6px #34D399; }
+
+.main-content { margin-left: 232px; padding: 28px 36px; min-height: 100vh; }
+
+.topbar { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+.topbar-eyebrow { font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.08em;
+    color: #4FA8E0; text-transform: uppercase; margin-bottom: 4px; }
+.topbar-title { font-family: 'Space Grotesk', sans-serif; font-size: 24px; font-weight: 600; color: #EDEFF2; }
+.live-badge { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #34D399;
+    border: 1px solid #34D399; border-radius: 20px; padding: 5px 14px; height: fit-content; }
+
+.kpi-row { display: flex; gap: 14px; margin-bottom: 22px; flex-wrap: wrap; }
+.kpi-card { background: #1B1E24; border: 1px solid #2A2F38; border-top: 3px solid #4FA8E0;
+    border-radius: 10px; padding: 16px 18px; flex: 1; min-width: 160px; }
+.kpi-label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.06em;
+    color: #8B93A1; text-transform: uppercase; margin-bottom: 8px; }
+.kpi-value { font-family: 'Space Grotesk', sans-serif; font-size: 26px; font-weight: 600; color: #EDEFF2; }
+.kpi-sub { font-family: 'Inter', sans-serif; font-size: 11.5px; color: #8B93A1; margin-top: 4px; }
+
+.panel { background: #1B1E24; border: 1px solid #2A2F38; border-radius: 12px; padding: 20px 22px; margin-bottom: 20px; }
+.panel-eyebrow { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.07em;
+    color: #4FA8E0; text-transform: uppercase; margin-bottom: 6px; }
+.panel-title { font-family: 'Space Grotesk', sans-serif; font-size: 16px; font-weight: 600; color: #EDEFF2; margin-bottom: 14px; }
+
+.site-selector .Select-control, .site-selector input {
+    background: #22262E !important; border: 1px solid #2A2F38 !important; color: #EDEFF2 !important;
+    font-family: 'IBM Plex Mono', monospace !important;
+}
+
+.dash-table-container { font-family: 'IBM Plex Mono', monospace !important; }
+
+.legend-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #2A2F38; }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.legend-label { font-family: 'Inter', sans-serif; font-size: 13px; color: #EDEFF2; font-weight: 500; }
+.legend-sub { font-family: 'Inter', sans-serif; font-size: 11px; color: #8B93A1; }
+.legend-pct { font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 600; margin-left: auto; }
+
+.slider-label { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #8B93A1;
+    text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; }
+.slider-value { font-family: 'Inter', sans-serif; font-size: 12px; color: #4FA8E0; margin-bottom: 10px; }
+
+.preset-btn { background: #22262E; border: 1px solid #2A2F38; color: #EDEFF2; border-radius: 8px;
+    padding: 12px 16px; font-family: 'Inter', sans-serif; font-size: 12.5px; cursor: pointer; flex: 1;
+    text-align: left; transition: border-color 0.15s; }
+.preset-btn:hover { border-color: #4FA8E0; }
+.preset-btn-title { font-weight: 600; margin-bottom: 2px; }
+.preset-btn-sub { font-size: 10.5px; color: #8B93A1; }

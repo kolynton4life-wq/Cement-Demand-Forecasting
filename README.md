@@ -225,16 +225,45 @@ value:
 **Task**: Plotly Dash app with forecasts, inventory projections, reorder
 alerts, site drill-down and aggregate views.
 
-Built and **tested live** (server start, real HTTP requests, and an actual
-interactive callback test — not just page load): `src/dashboard/app.py`.
+**Redesigned as a 7-section "control tower"** after review — sidebar
+navigation across Executive Overview, Demand Forecast, Inventory Control,
+Risk Monitor, Reorder Recommendations, Site Drilldown, and a Scenario
+Simulator, replacing the earlier flat two-tab layout. Own design system,
+not copied from any reference: dark graphite background, two accents
+(safety-amber `#F2A93B`, steel-blue `#4FA8E0`) plus a 4-color semantic risk
+system (stockout/low-stock/overcapacity/normal) used consistently across
+KPI cards, nav, and tables — design tokens live in `src/dashboard/theme.py`,
+shared by both apps so neither drifts out of sync.
 
-A Streamlit version (`streamlit_app.py`) was added alongside it for this
-project's deployment target, kept in feature parity deliberately, and
-verified with Streamlit's `AppTest` framework including a real interactive
-site-switch test.
+**Scenario Simulator** is a real what-if engine, not decorative — sliders
+for demand/delivery/lead-time adjustments (plus 4 preset stress tests) feed
+`src/dashboard/scenario_engine.py`, which re-runs the *same* (s, S)
+reorder-point formula used in Step 5, live. Verified with causal sanity
+tests before trusting it: a demand surge never produces less risk than
+baseline, a supply disruption never produces fewer stockouts, "Reset to
+Baseline" matches the unperturbed run exactly.
+
+Both apps tested for real, not assumed correct:
+- **Dash** (`app.py`): live server + HTTP requests + tested callbacks for
+  navigation, site switching, and — the highest-risk piece — a full preset
+  button -> sliders -> live recompute chain, verified via direct calls to
+  Dash's callback endpoint.
+- **Streamlit** (`streamlit_app.py`): every one of the 7 pages tested with
+  `AppTest` (not just page load), plus the same preset/slider/site-switch
+  interactions.
+
+**Two real bugs caught while building this**, both fixed before shipping:
+1. A redundant merge created `ROP_x`/`ROP_y` column suffixes instead of a
+   clean `ROP` column — `reorder_alerts.parquet` already carried `ROP` from
+   notebook 05's own merge; re-merging it crashed the app on startup.
+2. `Dockerfile.streamlit` never copied `.streamlit/config.toml` — Streamlit
+   resolves theme config relative to the *working directory a command is
+   run from*, not the script's own folder, so the dark theme silently
+   wouldn't have applied inside the container. Fixed by copying the config
+   alongside the app code.
 
 *(Live screenshots aren't included here — run either app locally with the
-quickstart commands above to see it rendered.)*
+quickstart commands above, from the project root, to see it rendered.)*
 
 ---
 
